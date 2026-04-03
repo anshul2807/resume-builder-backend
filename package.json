@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "test": "echo \"No tests configured yet\"",
     "dev": "nodemon server.js",
     "start": "node server.js"
   },
