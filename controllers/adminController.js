@@ -1,48 +1,42 @@
 const User = require('../models/User');
-const EnhanceUsage = require('../models/EnhanceUsage');
 
 exports.getUsers = async (req, res) => {
+  // console.log("test1");
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const users = await User.find({}, 'name email dailyLimit');
-    const usages = await EnhanceUsage.find({ date: today });
-    
-    const usageMap = usages.reduce((acc, usage) => {
-      acc[usage.userId.toString()] = usage.count;
-      return acc;
-    }, {});
+    const users = await User.find({}, 'name email tokens createdAt');
 
     const userData = users.map(u => ({
       id: u._id,
       name: u.name,
       email: u.email,
-      dailyLimit: u.dailyLimit,
-      usedToday: usageMap[u._id.toString()] || 0
+      tokens: u.tokens,
+      createdAt: u.createdAt
     }));
 
     res.json(userData);
   } catch (error) {
+    console.log("err");
     res.status(500).json({ error: 'Failed to fetch admin users data' });
   }
 };
 
-exports.updateUserLimit = async (req, res) => {
+exports.updateUserTokens = async (req, res) => {
   try {
-    const { dailyLimit } = req.body;
-    if (typeof dailyLimit !== 'number' || dailyLimit < 0) {
-      return res.status(400).json({ error: 'Invalid daily limit' });
+    const { tokens } = req.body;
+    if (typeof tokens !== 'number' || tokens < 0) {
+      return res.status(400).json({ error: 'Invalid tokens value' });
     }
 
     const user = await User.findByIdAndUpdate(
-      req.params.id, 
-      { dailyLimit }, 
+      req.params.id,
+      { tokens },
       { new: true }
     );
-    
+
     if (!user) return res.status(404).json({ error: 'User not found' });
-    
-    res.json({ message: 'Limit updated successfully', dailyLimit: user.dailyLimit });
+
+    res.json({ message: 'Tokens updated successfully', tokens: user.tokens });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update limit' });
+    res.status(500).json({ error: 'Failed to update tokens' });
   }
 };

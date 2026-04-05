@@ -17,9 +17,10 @@ exports.signup = async (req, res) => {
     await user.save();
 
     res.status(201).json({
-      user: { id: user._id, name: user.name, email: user.email },
+      user: { id: user._id, name: user.name, email: user.email, tokens: user.tokens },
       token: generateToken(user._id)
     });
+
   } catch (error) {
     res.status(500).json({ error: 'Signup failed' });
   }
@@ -35,7 +36,7 @@ exports.login = async (req, res) => {
     if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
 
     res.json({
-      user: { id: user._id, name: user.name, email: user.email, role: user.role, dailyLimit: user.dailyLimit },
+      user: { id: user._id, name: user.name, email: user.email, role: user.role, tokens: user.tokens },
       token: generateToken(user._id)
     });
   } catch (error) {

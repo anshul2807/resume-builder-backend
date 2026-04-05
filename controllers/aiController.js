@@ -1,6 +1,5 @@
 const { GoogleGenAI } = require('@google/genai');
 const User = require('../models/User');
-const EnhanceUsage = require('../models/EnhanceUsage');
 
 exports.enhanceText = async (req, res) => {
   try {
@@ -10,16 +9,9 @@ exports.enhanceText = async (req, res) => {
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const today = new Date().toISOString().split('T')[0];
-    let usage = await EnhanceUsage.findOne({ userId: req.userId, date: today });
-
-    if (!usage) {
-      usage = new EnhanceUsage({ userId: req.userId, date: today, count: 0 });
-    }
-
-    if (usage.count >= user.dailyLimit) {
-      return res.status(429).json({
-        error: `Daily limit of ${user.dailyLimit} reached. Please try again tomorrow.`
+    if (user.tokens < 1) {
+      return res.status(402).json({
+        error: 'Not enough tokens. Please purchase more tokens.'
       });
     }
 
@@ -29,10 +21,10 @@ exports.enhanceText = async (req, res) => {
       contents: prompt,
     });
 
-    usage.count += 1;
-    await usage.save();
+    user.tokens -= 1;
+    await user.save();
 
-    res.json({ result: response.text, remaining: user.dailyLimit - usage.count });
+    res.json({ result: response.text, remaining: user.tokens });
   } catch (error) {
     console.error('AI Enhance Error:', error);
     res.status(500).json({ error: 'Failed to enhance text' });
@@ -44,15 +36,30 @@ exports.getUsageStats = async (req, res) => {
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const today = new Date().toISOString().split('T')[0];
-    const usage = await EnhanceUsage.findOne({ userId: req.userId, date: today });
-
     res.json({
-      enhanceUsageToday: usage ? usage.count : 0,
-      dailyLimit: user.dailyLimit
+      tokens: user.tokens
     });
   } catch (error) {
     console.error('Get Usage Stats Error:', error);
     res.status(500).json({ error: 'Failed to get usage stats' });
   }
-}
+};
+
+exports.deductDownload = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (user.tokens < 5) {
+      return res.status(402).json({ error: 'Not enough tokens to download. Downloading costs 5 tokens.' });
+    }
+
+    user.tokens -= 5;
+    await user.save();
+
+    res.json({ success: true, tokens: user.tokens });
+  } catch (error) {
+    console.error('Deduct Download Error:', error);
+    res.status(500).json({ error: 'Failed to deduct tokens for download' });
+  }
+};
